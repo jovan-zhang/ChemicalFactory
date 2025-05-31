@@ -145,7 +145,7 @@ CREATE TABLE users (
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL, 
-    CONSTRAINT CK_UserRole CHECK (role IN ('admin', 'buyer', 'distributor')) 
+    CONSTRAINT CK_UserRole CHECK (role IN ('admin', 'buyer', 'distributor', 'worker'))
 );
 
 -- 创建三个表值类型
@@ -682,5 +682,6 @@ INSERT INTO users (username, password, role) VALUES
 ('buyer1', 'buyer123', 'buyer'),
 ('buyer2', 'buyer456', 'buyer'),
 ('dist1', 'dist123', 'distributor'),
-('dist2', 'dist456', 'distributor');
-
+('dist2', 'dist456', 'distributor'),
+('worker1', 'worker123', 'worker'),
+('worker2', 'worker456', 'worker');

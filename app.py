@@ -1,10 +1,44 @@
 from flask import Flask, jsonify, request, g
+from flask_cors import CORS
+from functools import wraps
+from jwt import ExpiredSignatureError, InvalidTokenError
 import pyodbc
-
+import jwt
+import datetime
 
 app = Flask(__name__)
-
-
+app.config['SECRET_KEY'] = '123456'  # 密钥
+CORS(app)
+ROLE_PERMISSIONS = {
+    'admin': {
+        'materials': ['GET', 'POST', 'PUT', 'DELETE'],
+        'products': ['GET', 'POST', 'PUT', 'DELETE'],
+        'purchase_records': ['GET', 'POST', 'PUT', 'DELETE'],
+        'sale_records': ['GET', 'POST', 'PUT', 'DELETE'],
+        'production_records': ['GET', 'POST', 'PUT', 'DELETE']
+    },
+    'buyer': {
+        'materials': ['GET'],
+        'products': ['GET'],
+        'purchase_records': ['GET', 'POST'],
+        'sale_records': [],
+        'production_records': []
+    },
+    'distributor': {
+        'materials': ['GET'],
+        'products': ['GET'],
+        'purchase_records': [],
+        'sale_records': ['GET', 'POST'],
+        'production_records': []
+    },
+    'worker': {
+        'materials': ['GET'],
+        'products': ['GET'],
+        'purchase_records': [],
+        'sale_records': [],
+        'production_records': ['GET', 'POST']
+    }
+}
 # 数据库配置
 def get_db():
     if 'db' not in g:
@@ -22,7 +56,90 @@ def close_db(error):
     if 'db' in g:
         g.db.close()
 
-# 原料增删改查
+# 权限控制装饰器
+def token_required(roles=None):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            token = None
+
+            # 1. 从请求头获取token
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header.split(" ")[1]
+
+            if not token:
+                return jsonify({'message': 'Token is missing!'}), 401
+
+            try:
+                # 2. 解码和验证token
+                data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+                current_user = data['username']
+                current_role = data['role']
+
+                # 3. 检查角色权限
+                if roles and current_role not in roles:
+                    return jsonify({'message': '操作权限不足'}), 403
+
+                # 4. 检查路由权限
+                path_parts = [part for part in request.path.split('/') if part]
+                if path_parts:  # 确保路径不为空
+                    base_route = path_parts[0]
+
+                    # 检查路由是否在权限配置中
+                    if base_route in ROLE_PERMISSIONS.get(current_role, {}):
+                        allowed_methods = ROLE_PERMISSIONS[current_role][base_route]
+                        if request.method not in allowed_methods:
+                            return jsonify({'message': '操作权限不足'}), 403
+                    else:
+                        # 如果路由不在权限配置中，默认拒绝访问
+                        return jsonify({'message': 'No permission for this resource!'}), 403
+
+                # 将用户信息存储在g对象中，供视图函数使用
+                g.current_user = current_user
+                g.current_role = current_role
+
+                return f(*args, **kwargs)
+
+            except ExpiredSignatureError:
+                return jsonify({'message': 'Token has expired!'}), 401
+            except InvalidTokenError:
+                return jsonify({'message': 'Invalid token!'}), 401
+            except Exception as e:
+                app.logger.error(f"Authentication error: {str(e)}")
+                return jsonify({'message': 'Authentication failed!'}), 500
+
+        return decorated_function
+
+    return decorator
+
+# 登录接口
+@app.route('/login', methods=['POST'])
+def login():
+    auth = request.get_json()
+
+    if not auth or not auth.get('username') or not auth.get('password'):
+        return jsonify({'message': '用户名或密码不能为空'}), 401
+
+    cursor = get_db().cursor()
+    cursor.execute("SELECT username, password, role FROM users WHERE username=?", (auth['username'],))
+    user = cursor.fetchone()
+
+    if not user:
+        return jsonify({'message': '用户不存在'}), 404
+
+
+    if user.password != auth['password']:
+        return jsonify({'message': '密码错误'}), 401
+
+    token = jwt.encode({
+        'username': user.username,
+        'role': user.role,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+    }, app.config['SECRET_KEY'])
+
+    return jsonify({'token': token})
+
 
 # 原料数据格式
 '''
@@ -39,6 +156,7 @@ def close_db(error):
 
 #  获取所有原料
 @app.route('/materials', methods=['GET'])
+@token_required()
 def get_materials():
     cursor = get_db().cursor()
     cursor.execute("SELECT * FROM ChemicalMaterial")
@@ -47,6 +165,7 @@ def get_materials():
 
 # 由id获取单个原料
 @app.route('/materials/<int:material_id>', methods=['GET'])
+@token_required()
 def get_material(material_id):
     cursor = get_db().cursor()
     cursor.execute("SELECT * FROM ChemicalMaterial WHERE material_id=?", (material_id,))
@@ -61,6 +180,7 @@ def get_material(material_id):
 
 # 添加原料
 @app.route('/materials', methods=['POST'])
+@ token_required(roles=['admin'])
 def add_material():
     data = request.get_json()
     #  检查参数
@@ -93,6 +213,7 @@ def add_material():
 
 #  更新单个原料，不更新库存，库存只能由触发器自动更新
 @app.route('/materials/<int:material_id>', methods=['PUT'])
+@token_required(roles=['admin'])
 def update_material(material_id):
     data = request.get_json()
     #  检查参数
@@ -128,6 +249,7 @@ def update_material(material_id):
 
 # 删除单个原料，如果存在关联的任何记录，则无法删除
 @app.route('/materials/<int:material_id>', methods=['DELETE'])
+@token_required(roles=['admin'])
 def delete_material(material_id):
     cursor = get_db().cursor()
     #检查是否存在该原料
@@ -158,6 +280,7 @@ def delete_material(material_id):
 
 # 获取所有产品
 @app.route('/products', methods=['GET'])
+@token_required()
 def get_products():
     cursor = get_db().cursor()
     cursor.execute("SELECT * FROM ChemicalProduct")
@@ -166,6 +289,7 @@ def get_products():
 
 # 由id获取单个产品
 @app.route('/products/<int:product_id>', methods=['GET'])
+@token_required()
 def get_product(product_id):
     cursor = get_db().cursor()
     cursor.execute("SELECT * FROM ChemicalProduct WHERE product_id=?", (product_id,))
@@ -179,6 +303,7 @@ def get_product(product_id):
 
 # 添加产品
 @app.route('/products', methods=['POST'])
+@token_required(roles=['admin'])
 def add_product():
     data = request.get_json()
 
@@ -206,6 +331,7 @@ def add_product():
 
 # 更新产品信息
 @app.route('/products/<int:product_id>', methods=['PUT'])
+@token_required(roles=['admin'])
 def update_product(product_id):
     data = request.get_json()
 
@@ -240,6 +366,7 @@ def update_product(product_id):
 
 # 删除产品（存在关联记录时禁止删除）
 @app.route('/products/<int:product_id>', methods=['DELETE'])
+@token_required(roles=['admin'])
 def delete_product(product_id):
     cursor = get_db().cursor()
 
@@ -280,6 +407,7 @@ def delete_product(product_id):
 
 # 获取所有进货记录列表，返回格式为进货记录表数据格式
 @app.route('/purchase_records', methods=['GET'])
+@token_required(roles=['admin',  'buyer'])
 def get_purchase_records():
     cursor = get_db().cursor()
     cursor.execute("SELECT * FROM PurchaseRecord")
@@ -289,6 +417,7 @@ def get_purchase_records():
 
 # 根据id获取进货记录详情
 @app.route('/purchase_records/<int:record_id>', methods=['GET'])
+@token_required(roles=['admin', 'buyer'])
 def get_purchase_record_detail(record_id):
     try:
         cursor = get_db().cursor()
@@ -322,6 +451,7 @@ def get_purchase_record_detail(record_id):
 
 # 查找某个进货记录id的原料列表,返回格式为json对象数组，每个对象为{原料id， 原料名称， 数量， 单价（每单位的价钱）， 原料单位}
 @app.route('/purchase_records/<int:record_id>/materials', methods=['GET'])
+@token_required(roles=['admin', 'buyer'])
 def get_purchase_materials(record_id):
     cursor = get_db().cursor()
     cursor.execute("SELECT CM.material_id, CM.name, PM.quantity, PM.unit_price, CM.unit FROM ChemicalMaterial CM, PurchaseMaterial PM, PurchaseRecord PR WHERE CM.material_id = PM.material_id AND PM.record_id = PR.record_id AND PM.record_id = ?", (record_id,))
@@ -333,6 +463,7 @@ def get_purchase_materials(record_id):
 
 # 添加进货记录（直接处理，不使用存储过程）
 @app.route('/purchase_records', methods=['POST'])
+@token_required(roles=['admin', 'buyer'])
 def add_purchase_record():
     data = request.get_json()
 
@@ -425,6 +556,7 @@ def add_purchase_record():
 
 # 删除进货记录
 @app.route('/purchase_records/<int:record_id>', methods=['DELETE'])
+@token_required(roles=['admin', 'buyer'])
 def delete_purchase_record(record_id):
     try:
         conn = get_db()
@@ -451,6 +583,7 @@ def delete_purchase_record(record_id):
 
 # 获取所有销售记录列表，返回格式为销售记录表数据格式
 @app.route('/sale_records', methods=['GET'])
+@token_required(roles=['admin', 'distributor'])
 def get_sale_records():
     cursor = get_db().cursor()
     cursor.execute("SELECT * FROM SalesRecord")
@@ -460,6 +593,7 @@ def get_sale_records():
 
 # 获取销售记录详情
 @app.route('/sale_records/<int:record_id>', methods=['GET'])
+@token_required(roles=['admin', 'distributor'])
 def get_sale_record_detail(record_id):
     try:
         cursor = get_db().cursor()
@@ -494,6 +628,7 @@ def get_sale_record_detail(record_id):
 
 # 查找某个销售记录id的产品列表，返回格式为json对象数组，每个对象为{产品id， 产品名称， 数量， 单价（每单位的价钱）， 产品单位}
 @app.route('/sale_records/<int:record_id>/products', methods=['GET'])
+@token_required(roles=['admin', 'distributor'])
 def get_sale_products(record_id):
     cursor = get_db().cursor()
     cursor.execute("""
@@ -510,6 +645,7 @@ def get_sale_products(record_id):
 
 # 添加销售记录
 @app.route('/sale_records', methods=['POST'])
+@token_required(roles=['admin', 'distributor'])
 def add_sale_record():
     data = request.get_json()
 
@@ -594,6 +730,7 @@ def add_sale_record():
 
 # 删除销售记录
 @app.route('/sale_records/<int:record_id>', methods=['DELETE'])
+@token_required(roles=['admin', 'distributor'])
 def delete_sale_record(record_id):
     try:
         conn = get_db()
@@ -622,6 +759,7 @@ def delete_sale_record(record_id):
 
 # 获取所有生产记录（简要信息）
 @app.route('/production_records', methods=['GET'])
+@token_required(roles=['admin', 'worker'])
 def get_production_records():
     try:
         cursor = get_db().cursor()
@@ -653,6 +791,7 @@ def get_production_records():
 
 # 获取生产记录详情
 @app.route('/production_records/<int:record_id>', methods=['GET'])
+@token_required(roles=['admin', 'worker'])
 def get_production_record_detail(record_id):
     try:
         cursor = get_db().cursor()
@@ -688,6 +827,7 @@ def get_production_record_detail(record_id):
 
 # 获取单个生产记录的原料使用列表
 @app.route('/production_records/<int:record_id>/materials', methods=['GET'])
+@token_required(roles=['admin', 'worker'])
 def get_production_record_materials(record_id):
     try:
         conn = get_db()
@@ -722,6 +862,7 @@ def get_production_record_materials(record_id):
 
 # 添加生产记录
 @app.route('/production_records', methods=['POST'])
+@token_required(roles=['admin', 'worker'])
 def add_production_record():
     data = request.get_json()
 
@@ -833,6 +974,8 @@ def add_production_record():
         except:
             pass
         return jsonify({"error": f"操作失败: {str(e)}"}), 500
+
+
 
 
 if __name__ == '__main__':
