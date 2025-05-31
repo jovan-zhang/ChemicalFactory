@@ -280,7 +280,7 @@ GO
 
 USE chemical_factory;
 GO
--- 添加销售过程的存储记录
+-- 添加销售记录的存储过程
 CREATE PROCEDURE sp_AddSalesRecord
     @customer_id INT,
     @record_date DATE,
