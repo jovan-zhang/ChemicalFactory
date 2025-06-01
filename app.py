@@ -15,7 +15,7 @@ ROLE_PERMISSIONS = {
         'products': ['GET', 'POST', 'PUT', 'DELETE'],
         'purchase_records': ['GET', 'POST', 'PUT', 'DELETE'],
         'sale_records': ['GET', 'POST', 'PUT', 'DELETE'],
-        'production_records': ['GET', 'POST', 'PUT', 'DELETE']
+        'production_records': ['GET', 'POST']
     },
     'buyer': {
         'materials': ['GET'],
@@ -128,7 +128,6 @@ def login():
     if not user:
         return jsonify({'message': '用户不存在'}), 404
 
-
     if user.password != auth['password']:
         return jsonify({'message': '密码错误'}), 401
 
@@ -138,7 +137,11 @@ def login():
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
     }, app.config['SECRET_KEY'])
 
-    return jsonify({'token': token})
+    return jsonify({
+        'token': token,
+        'username': user.username,
+        'role': user.role
+    })
 
 
 # 原料数据格式

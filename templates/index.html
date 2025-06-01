@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>化学工厂管理系统</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="../static/css/style.css" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Login Page - Initially displayed -->
+    <div id="login-page" class="d-flex justify-content-center align-items-center vh-100 bg-light">
+        <div class="card shadow-lg p-4" style="width: 25rem;">
+            <div class="card-body">
+                <h3 class="card-title text-center mb-4">化学工厂管理系统登录</h3>
+                <div id="loginErrorAlert" class="alert alert-danger d-none" role="alert"></div>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="username" required autocomplete="username">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">登录</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container - Initially hidden -->
+    <div id="main-app-container" class="d-flex d-none">
+        <!-- Sidebar -->
+        <div class="bg-dark text-white border-end" id="sidebar-wrapper">
+            <div class="sidebar-heading bg-dark text-white">工厂管理</div>
+            <div class="list-group list-group-flush">
+                <!-- Data-view attributes map to content-view IDs -->
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white border-0" data-view="dashboard" id="nav-dashboard">仪表盘</a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white border-0 d-none" data-view="materials" id="nav-materials">原料管理</a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white border-0 d-none" data-view="products" id="nav-products">产品管理</a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white border-0 d-none" data-view="purchase_records" id="nav-purchase_records">进货记录</a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white border-0 d-none" data-view="sale_records" id="nav-sale_records">销售记录</a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white border-0 d-none" data-view="production_records" id="nav-production_records">生产记录</a>
+            </div>
+        </div>
+        <!-- /#sidebar-wrapper -->
+
+        <!-- Page Content -->
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+                <div class="container-fluid">
+                    <button class="btn btn-primary" id="sidebarToggle">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <h2 class="ms-3 mb-0" id="pageTitle">仪表盘</h2>
+                    <div class="ms-auto">
+                        <span id="userInfo" class="me-3 fw-bold"></span>
+                        <button class="btn btn-outline-danger" id="logoutBtn">注销</button>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="container-fluid py-4">
+                <!-- Dashboard View -->
+                <div id="dashboard-view" class="content-view">
+                    <h3>欢迎使用化学工厂管理系统</h3>
+                    <p>请在左侧导航栏选择您要管理的项目。</p>
+                </div>
+
+                <!-- Materials Management View -->
+                <div id="materials-view" class="content-view d-none">
+                    <h3 class="mb-3">原料管理</h3>
+                    <button class="btn btn-primary mb-3 add-btn d-none" id="addMaterialBtn" data-bs-toggle="modal" data-bs-target="#materialModal" data-mode="add" data-permission-roles="admin">添加原料</button>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>CAS号</th>
+                                    <th>库存</th>
+                                    <th>单位</th>
+                                    <th>浓度(%)</th>
+                                    <th>类别</th>
+                                    <th>存储条件</th>
+                                    <th>最低阈值</th>
+                                    <th class="action-column">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materialsTableBody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Products Management View -->
+                <div id="products-view" class="content-view d-none">
+                    <h3 class="mb-3">产品管理</h3>
+                    <button class="btn btn-primary mb-3 add-btn d-none" id="addProductBtn" data-bs-toggle="modal" data-bs-target="#productModal" data-mode="add" data-permission-roles="admin">添加产品</button>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>单位</th>
+                                    <th>危险等级</th>
+                                    <th>库存</th>
+                                    <th class="action-column">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Purchase Records View -->
+                <div id="purchase_records-view" class="content-view d-none">
+                    <h3 class="mb-3">进货记录</h3>
+                    <button class="btn btn-primary mb-3 add-btn d-none" id="addPurchaseRecordBtn" data-bs-toggle="modal" data-bs-target="#purchaseRecordModal" data-mode="add" data-permission-roles="buyer,admin">添加进货记录</button>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>记录ID</th>
+                                    <th>日期</th>
+                                    <th>供应商ID</th>
+                                    <th>员工ID</th>
+                                    <th class="action-column">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchaseRecordsTableBody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sale Records View -->
+                <div id="sale_records-view" class="content-view d-none">
+                    <h3 class="mb-3">销售记录</h3>
+                    <button class="btn btn-primary mb-3 add-btn d-none" id="addSaleRecordBtn" data-bs-toggle="modal" data-bs-target="#saleRecordModal" data-mode="add" data-permission-roles="distributor,admin">添加销售记录</button>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>记录ID</th>
+                                    <th>日期</th>
+                                    <th>客户ID</th>
+                                    <th>员工ID</th>
+                                    <th class="action-column">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="saleRecordsTableBody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Production Records View -->
+                <div id="production_records-view" class="content-view d-none">
+                    <h3 class="mb-3">生产记录</h3>
+                    <button class="btn btn-primary mb-3 add-btn d-none" id="addProductionRecordBtn" data-bs-toggle="modal" data-bs-target="#productionRecordModal" data-mode="add" data-permission-roles="worker,admin">添加生产记录</button>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>记录ID</th>
+                                    <th>日期</th>
+                                    <th>产品名称</th>
+                                    <th>生产线</th>
+                                    <th>理论产量</th>
+                                    <th>实际产量</th>
+                                    <th class="action-column">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productionRecordsTableBody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /#page-content-wrapper -->
+    </div>
+
+    <!-- Material Modal (Add/Edit) -->
+    <div class="modal fade" id="materialModal" tabindex="-1" aria-labelledby="materialModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="materialModalLabel">添加/编辑原料</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="materialForm">
+                        <input type="hidden" id="materialId">
+                        <div class="mb-3">
+                            <label for="materialName" class="form-label">名称</label>
+                            <input type="text" class="form-control" id="materialName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="materialCasNumber" class="form-label">CAS号</label>
+                            <input type="text" class="form-control" id="materialCasNumber" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="materialUnit" class="form-label">单位</label>
+                            <input type="text" class="form-control" id="materialUnit" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="materialConcentration" class="form-label">浓度 (%)</label>
+                            <input type="number" step="0.01" min="0" max="100" class="form-control" id="materialConcentration" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="materialCategory" class="form-label">类别</label>
+                            <input type="text" class="form-control" id="materialCategory" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="materialStorageCondition" class="form-label">存储条件</label>
+                            <input type="text" class="form-control" id="materialStorageCondition" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="materialMinStockThreshold" class="form-label">最低库存阈值</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="materialMinStockThreshold" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal (Add/Edit) -->
+    <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productModalLabel">添加/编辑产品</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <input type="hidden" id="productId">
+                        <div class="mb-3">
+                            <label for="productName" class="form-label">名称</label>
+                            <input type="text" class="form-control" id="productName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productUnit" class="form-label">单位</label>
+                            <input type="text" class="form-control" id="productUnit" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productHazardRating" class="form-label">危险等级</label>
+                            <select class="form-select" id="productHazardRating" required>
+                                <option value="">请选择</option>
+                                <option value="I">I</option>
+                                <option value="II">II</option>
+                                <option value="III">III</option>
+                                <option value="IV">IV</option>
+                                <option value="V">V</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Record Modal (Add/Details) -->
+    <div class="modal fade" id="purchaseRecordModal" tabindex="-1" aria-labelledby="purchaseRecordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="purchaseRecordModalLabel">添加进货记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="purchaseRecordForm">
+                        <input type="hidden" id="purchaseRecordId">
+                        <div class="mb-3">
+                            <label for="purchaseSupplierId" class="form-label">供应商ID</label>
+                            <input type="number" class="form-control" id="purchaseSupplierId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="purchaseDate" class="form-label">日期</label>
+                            <input type="date" class="form-control" id="purchaseDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="purchaseEmployeeId" class="form-label">员工ID</label>
+                            <input type="number" class="form-control" id="purchaseEmployeeId" required>
+                        </div>
+
+                        <h6>进货原料列表</h6>
+                        <div id="purchaseMaterialsContainer">
+                            <!-- Dynamic material inputs will go here -->
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="addPurchaseMaterialBtn">添加原料</button>
+
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </form>
+
+                    <!-- Purchase Record Details Section (for View mode) -->
+                    <div id="purchaseRecordDetails" class="d-none mt-4">
+                        <h6>记录详情</h6>
+                        <p><strong>记录ID:</strong> <span id="detailPurchaseRecordId"></span></p>
+                        <p><strong>日期:</strong> <span id="detailPurchaseDate"></span></p>
+                        <p><strong>供应商:</strong> <span id="detailPurchaseSupplierName"></span> (<span id="detailPurchaseSupplierId"></span>)</p>
+                        <p><strong>员工:</strong> <span id="detailPurchaseEmployeeName"></span> (<span id="detailPurchaseEmployeeId"></span>)</p>
+
+                        <h6 class="mt-4">进货原料</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>原料ID</th>
+                                        <th>名称</th>
+                                        <th>数量</th>
+                                        <th>单位</th>
+                                        <th>单价</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailPurchaseMaterialsTableBody">
+                                    <!-- Details will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sale Record Modal (Add/Details) -->
+    <div class="modal fade" id="saleRecordModal" tabindex="-1" aria-labelledby="saleRecordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="saleRecordModalLabel">添加销售记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="saleRecordForm">
+                        <input type="hidden" id="saleRecordId">
+                        <div class="mb-3">
+                            <label for="saleCustomerId" class="form-label">客户ID</label>
+                            <input type="number" class="form-control" id="saleCustomerId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="saleDate" class="form-label">日期</label>
+                            <input type="date" class="form-control" id="saleDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="saleEmployeeId" class="form-label">员工ID</label>
+                            <input type="number" class="form-control" id="saleEmployeeId" required>
+                        </div>
+
+                        <h6>销售产品列表</h6>
+                        <div id="saleProductsContainer">
+                            <!-- Dynamic product inputs will go here -->
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="addSaleProductBtn">添加产品</button>
+
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </form>
+
+                    <!-- Sale Record Details Section (for View mode) -->
+                    <div id="saleRecordDetails" class="d-none mt-4">
+                        <h6>记录详情</h6>
+                        <p><strong>记录ID:</strong> <span id="detailSaleRecordId"></span></p>
+                        <p><strong>日期:</strong> <span id="detailSaleDate"></span></p>
+                        <p><strong>客户:</strong> <span id="detailSaleCustomerName"></span> (<span id="detailSaleCustomerId"></span>)</p>
+                        <p><strong>员工:</strong> <span id="detailSaleEmployeeName"></span> (<span id="detailSaleEmployeeId"></span>)</p>
+
+                        <h6 class="mt-4">销售产品</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>产品ID</th>
+                                        <th>名称</th>
+                                        <th>数量</th>
+                                        <th>单位</th>
+                                        <th>单价</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailSaleProductsTableBody">
+                                    <!-- Details will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Production Record Modal (Add/Details) -->
+    <div class="modal fade" id="productionRecordModal" tabindex="-1" aria-labelledby="productionRecordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productionRecordModalLabel">添加生产记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="productionRecordForm">
+                        <input type="hidden" id="productionRecordId">
+                        <div class="mb-3">
+                            <label for="productionProductId" class="form-label">产品ID</label>
+                            <input type="number" class="form-control" id="productionProductId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productionLineId" class="form-label">生产线ID</label>
+                            <input type="number" class="form-control" id="productionLineId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productionDate" class="form-label">日期</label>
+                            <input type="date" class="form-control" id="productionDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productionTheoreticalOutput" class="form-label">理论产量</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="productionTheoreticalOutput" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productionActualOutput" class="form-label">实际产量</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="productionActualOutput" required>
+                        </div>
+
+                        <h6>使用原料列表</h6>
+                        <div id="productionMaterialsContainer">
+                            <!-- Dynamic material inputs will go here -->
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="addProductionMaterialBtn">添加原料</button>
+
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </form>
+
+                    <!-- Production Record Details Section (for View mode) -->
+                    <div id="productionRecordDetails" class="d-none mt-4">
+                        <h6>记录详情</h6>
+                        <p><strong>记录ID:</strong> <span id="detailProductionRecordId"></span></p>
+                        <p><strong>日期:</strong> <span id="detailProductionDate"></span></p>
+                        <p><strong>产品:</strong> <span id="detailProductionProductName"></span> (<span id="detailProductionProductId"></span>)</p>
+                        <p><strong>生产线:</strong> <span id="detailProductionLineName"></span> (<span id="detailProductionLineId"></span>)</p>
+                        <p><strong>理论产量:</strong> <span id="detailProductionTheoreticalOutput"></span></p>
+                        <p><strong>实际产量:</strong> <span id="detailProductionActualOutput"></span></p>
+
+                        <h6 class="mt-4">使用原料</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>原料ID</th>
+                                        <th>名称</th>
+                                        <th>使用数量</th>
+                                        <th>单位</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailProductionMaterialsTableBody">
+                                    <!-- Details will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Bootstrap JS (bundle includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script type="module" src="../static/js/api.js"></script>
+    <script type="module" src="../static/js/app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,203 @@
+/* --- Global Resets and Base Styles --- */
+
+html, body {
+    height: 100%; /* Ensure html and body take full viewport height */
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* CRITICAL CHANGE: Prevents unwanted horizontal scrollbars but allows vertical */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa; /* Light background for the whole app */
+}
+
+/* --- Login Page Styling --- */
+#login-page {
+    display: flex; /* Use flexbox to center content */
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Full viewport height */
+    background: linear-gradient(to right, #ece9e6, #ffffff);
+    transition: opacity 0.5s ease; /* Smooth transition for hiding/showing */
+}
+
+#login-page .card {
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    animation: fadeIn 1s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Main Application Container Styling --- */
+#main-app-container {
+    display: flex; /* CRITICAL: Flexbox layout for sidebar and content */
+    min-height: 100vh; /* Takes at least full viewport height */
+    width: 100vw; /* Ensure it perfectly aligns with viewport width */
+    transition: all 0.25s ease-out; /* Smooth transition for potential overall shifts */
+    flex-wrap: nowrap; /* Ensure no wrapping of sidebar and content */
+}
+
+/* --- Sidebar Wrapper --- */
+#sidebar-wrapper {
+    width: 15rem; /* Fixed width of the sidebar */
+    flex-shrink: 0; /* Prevents sidebar from shrinking normally */
+    background-color: #343a40; /* Dark background */
+    border-right: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+    z-index: 1000; /* Ensure it's above other content if necessary */
+    height: 100vh; /* Ensures sidebar takes full height */
+    overflow-y: auto; /* Allow sidebar content to scroll if it overflows vertically */
+    transition: width .25s ease-out, flex-basis .25s ease-out; /* Only transition width and flex-basis for collapsing */
+}
+
+#sidebar-wrapper .sidebar-heading {
+    padding: 0.875rem 1.25rem;
+    font-size: 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: #212529; /* Even darker background for heading */
+}
+
+#sidebar-wrapper .list-group {
+    /* REMOVED: width: 15rem; - Let list group naturally take the sidebar's width */
+}
+
+#sidebar-wrapper .list-group-item {
+    padding: 1rem 1.25rem;
+    border-radius: 0;
+    transition: background-color 0.2s ease, border-left 0.2s ease;
+}
+
+#sidebar-wrapper .list-group-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+#sidebar-wrapper .list-group-item.active {
+    background-color: #0d6efd; /* Bootstrap primary color */
+    color: white;
+    font-weight: bold;
+    border-left: 5px solid #0d6efd;
+}
+
+/* --- Page Content Wrapper --- */
+#page-content-wrapper {
+    flex-grow: 1; /* CRITICAL: Content takes up all available remaining space */
+    min-width: 0; /* Allows the content to shrink properly within flexbox */
+    display: flex; /* Make content itself a flex container for navbar and inner content */
+    flex-direction: column; /* Stack navbar and inner content vertically */
+}
+
+#page-content-wrapper .navbar {
+    flex-shrink: 0; /* Prevent navbar from shrinking */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Subtle shadow for navbar */
+    z-index: 999; /* Ensure navbar is above content */
+}
+
+#page-content-wrapper .container-fluid.py-4 {
+    flex-grow: 1; /* Inner content takes remaining space */
+    overflow-y: auto; /* Allow scrolling for content if it overflows vertically */
+    padding-bottom: 50px; /* Add some padding at the bottom for scroll comfort */
+}
+
+/* --- Responsive and Toggled States --- */
+
+/* Desktop (>= 768px): Push-style sidebar */
+@media (min-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: 0; /* Default: Sidebar visible */
+        position: sticky; /* Keeps sidebar fixed when content scrolls */
+        top: 0;
+        left: 0;
+        flex-basis: 15rem; /* Explicitly define its flex-basis for normal state */
+        width: 15rem; /* Fallback/explicit width for its content */
+    }
+
+    /* When toggled on desktop: Sidebar collapses its space */
+    #main-app-container.toggled #sidebar-wrapper {
+        width: 0;
+        flex-basis: 0;
+        overflow: hidden; /* Hide content during the width collapse */
+    }
+    /* Flexbox handles the expansion of #page-content-wrapper automatically when sidebar shifts. */
+}
+
+/* Mobile (< 768px): Overlay-style sidebar */
+@media (max-width: 767.98px) {
+    #sidebar-wrapper {
+        margin-left: -15rem; /* Default: Sidebar hidden off-screen */
+        position: fixed; /* Sidebar overlays content */
+        height: 100vh; /* Ensure full height for fixed sidebar */
+        top: 0;
+        left: 0;
+        width: 15rem;
+        flex-basis: auto; /* Revert flex-basis for mobile fixed positioning */
+    }
+
+    /* When toggled on mobile: Sidebar slides into view */
+    #main-app-container.toggled #sidebar-wrapper {
+        margin-left: 0; /* Sidebar slides into view */
+    }
+    /* No margin-left on #page-content-wrapper for mobile, as sidebar overlays. */
+}
+
+/* --- General Content Styles --- */
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.action-column {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.content-view {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.05);
+    /* Min-height handled by #page-content-wrapper's flex-grow and container-fluid's flex-grow */
+}
+
+.add-btn {
+    margin-bottom: 15px;
+}
+
+/* Alert/Toast message styling */
+.alert-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    width: 300px;
+    opacity: 0; /* Hidden by default */
+    animation: fadeInOut 5s forwards; /* Use a single animation for both fade in and out */
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-20px); }
+    10% { opacity: 1; transform: translateY(0); } /* Fade in */
+    90% { opacity: 1; transform: translateY(0); } /* Stay visible */
+    100% { opacity: 0; transform: translateY(-20px); } /* Fade out */
+}
+
+/* Styles for dynamic form inputs (e.g., add materials/products to records) */
+.material-item, .product-item, .production-material-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #dee2e6;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #ffffff; /* Lighter background for these items */
+}
+
+.material-item input, .product-item input, .production-material-item input {
+    flex: 1;
+}
+
+.material-item .form-control-sm,
+.product-item .form-control-sm,
+.production-material-item .form-control-sm {
+    width: auto; /* Allow auto-width based on flex */
+}
